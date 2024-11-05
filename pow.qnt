@@ -2,11 +2,10 @@ module pow {
     // Define o tipo Node como uma string (identificador de nó)
     type Node = str
 
-    // Definindo uma variante para miner_id que pode ser "first" ou um Node
+    // Definindo uma variante para miner_id que pode ser "First" ou um Node
     type MinerId =
         | First       // Representa o bloco inicial, valor especial
         | Miner(Node) // Representa o minerador por um Node
-
 
     // Enumeradores para o estado do minerador
     type MinerStatus =
@@ -35,7 +34,7 @@ module pow {
     }
 
     // Ação para verificar todas as condições de tipo
-    action POWTypeOK = all {
+    action POWTypeOK: bool = all {
         // Verifica se todos os elementos de blcks seguem o tipo Block
         blcks.forall(isValidBlock),
 
@@ -52,33 +51,32 @@ module pow {
         nodes.forall(n => Set(0, 1).contains(status_changer.get(n)))
     }
 
-     // Ação de inicialização do estado
-    action POWInit = all {
+     action POWInitOK: bool = all {
         // Inicializa blcks com o bloco inicial
-        blcks' = Set({
+        blcks == Set({
             miner_id: First,
             block_id: 0,
             prev_block_id: -1
         }),
 
         // Inicializa chain, mapeando cada nó para um conjunto contendo o bloco inicial
-        chain' = nodes.mapBy(n => Set({
+        chain == nodes.mapBy(n => Set({
             miner_id: First,
             block_id: 0,
             prev_block_id: -1
         })),
 
         // Inicializa last_block_id, mapeando cada nó para 0
-        last_block_id' = nodes.mapBy(n => 0),
+        last_block_id == nodes.mapBy(n => 0),
 
         // Inicializa status, mapeando cada nó para MINER
-        status' = nodes.mapBy(n => MINER),
+        status == nodes.mapBy(n => MINER),
 
         // Inicializa status_changer, mapeando cada nó para 0
-        status_changer' = nodes.mapBy(n => 0)
+        status_changer == nodes.mapBy(n => 0)
     }
 
-    
+
     // Função de mineração de um bloco por um nó
     action MineABlock(n: Node): bool = all {
         // Verifica se o status do nó é MINER
@@ -107,7 +105,7 @@ module pow {
         // Define status_changer para 1 para o nó n
         status_changer' = status_changer.set(n, 1)
     }
-    
+
     // Ação para confirmar um bloco minerado por um nó
     action CommitABlock(n: Node, r: Node): bool = all {
         // Verifica se o status de n é MINED
@@ -123,7 +121,7 @@ module pow {
             prev_block_id: last_block_id.get(n) - 1
         }),
 
-        // Mantém chain inalterado, exceto para o nó r, onde adiciona o bloco de n
+        // Atualiza chain para o nó r, incluindo o novo bloco
         chain' = chain.set(r, chain.get(r).union(Set({
             miner_id: Miner(n),
             block_id: last_block_id.get(n),
@@ -141,7 +139,7 @@ module pow {
         status' = status
     }
 
-     // Ação para ignorar um bloco minerado por um nó
+    // Ação para ignorar um bloco minerado por um nó
     action IgnoreABlock(n: Node, r: Node): bool = all {
         // Verifica se o status de n é MINED
         status.get(n) == MINED,
@@ -180,8 +178,8 @@ module pow {
         last_block_id' = last_block_id
     }
 
-     // Ação de transição principal, que executa uma das alternativas para um nó escolhido
-    action POWNext: bool = any {
+    // Ação de transição principal, que executa uma das alternativas para um nó escolhido
+    action POWNext = any {
         // Escolhe um nó `n` de forma não-determinística
         nondet n = oneOf(nodes)
 
@@ -204,15 +202,10 @@ module pow {
         }
     }
 
-    // Ação que representa um passo repetitivo de POWNext
-    action step: bool = POWNext
+    // Definimos os vars para usar com orKeep
+    val vars = (chain, blcks, last_block_id, status)
 
-    // Especificação completa do protocolo de prova de trabalho
-    action POWSpec = all {
-        // Inicializa o estado
-        POWInit,
+    // Especificação do protocolo de prova de trabalho usando orKeep
+    temporal POWSpec = POWInitOK implies always(POWNext.orKeep(vars))
 
-        // Executa a transição repetida usando step
-        step
-    }
 }
