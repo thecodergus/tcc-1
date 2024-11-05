@@ -42,8 +42,8 @@ module pow {
     // - `block_id` deve estar entre 0 e 3.
     // - `prev_block_id` deve estar entre -1 e 3.
     def isValidBlock(b: Block): bool = and {
-        b.block_id >= 0 and b.block_id <= 3,
-        b.prev_block_id >= -1 and b.prev_block_id <= 3
+        b.block_id >= 0,
+        b.prev_block_id >= -1
     }
 
     // Ação que verifica a consistência dos tipos e valores das variáveis de estado.
@@ -56,7 +56,7 @@ module pow {
         nodes.forall(n => chain.get(n).subseteq(blcks)),
 
         // Verifica se last_block_id é um mapeamento de nodes para valores entre 0 e 3
-        nodes.forall(n => last_block_id.get(n) >= 0 and last_block_id.get(n) <= 3),
+        nodes.forall(n => last_block_id.get(n) >= 0),
 
         // Verifica se status é um mapeamento de nodes para MINED ou MINER
         nodes.forall(n => Set(MINED, MINER).contains(status.get(n))),
@@ -251,6 +251,4 @@ module pow {
     // - `always(POWNext.orKeep(vars))`: Garante que, a partir do estado inicial, a ação `POWNext` ocorra continuamente, respeitando as transições definidas, ou as variáveis em `vars` permanecem inalteradas.
     // - `POWInitOK implies always(POWNext.orKeep(vars))`: Formaliza que se o sistema inicia em um estado válido, então as transições definidas por `POWNext` ocorrerão sempre, garantindo o comportamento correto do protocolo.
     temporal POWSpec = POWInitOK implies always(POWNext.orKeep(vars))
-
-    // Nota: O modelo atual limita os identificadores de bloco ao intervalo 0..3, o que pode ser suficiente para fins de análise, mas não representa um sistema real onde o número de blocos é ilimitado.
 }
