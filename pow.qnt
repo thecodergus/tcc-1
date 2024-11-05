@@ -220,7 +220,7 @@ module pow {
     //   - `MineABlock(n)`: O nó `n` minera um bloco.
     //   - `ChangeStatus(n)`: O nó `n` muda seu status após processamento.
     //   - Para cada nó `r`, executa `CommitABlock(n, r)` ou `IgnoreABlock(n, r)`.
-    action POWNext = any {
+    action step = any {
         // Escolhe um nó `n` de forma não-determinística
         nondet n = oneOf(nodes)
 
@@ -250,7 +250,7 @@ module pow {
     // - `POWInitOK`: Condição inicial que deve ser verdadeira no estado inicial.
     // - `always(POWNext.orKeep(vars))`: Garante que, a partir do estado inicial, a ação `POWNext` ocorra continuamente, respeitando as transições definidas, ou as variáveis em `vars` permanecem inalteradas.
     // - `POWInitOK implies always(POWNext.orKeep(vars))`: Formaliza que se o sistema inicia em um estado válido, então as transições definidas por `POWNext` ocorrerão sempre, garantindo o comportamento correto do protocolo.
-    temporal POWSpec = POWInitOK and always(POWNext.orKeep(vars))
+    temporal POWSpec = POWInitOK and always(step.orKeep(vars))
 
     temporal init = POWSpec implies POWInitOK
 }
