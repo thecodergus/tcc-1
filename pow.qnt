@@ -5,7 +5,12 @@ module pow {
     // Definindo uma variante para miner_id que pode ser "first" ou um Node
     type MinerId =
         | First       // Representa o bloco inicial, valor especial
-        | Miner(Node) // Representa o minerador por um Node
+        | Node
+
+    // Enumeradores para o estado do minerador
+    type MinerStatus =
+        | MINED
+        | MINER
 
     // Tipo Block, onde miner_id agora usa a variante MinerId
     type Block = {
@@ -14,21 +19,21 @@ module pow {
         prev_block_id: int       // Deve estar no intervalo -1..3
     }
 
-   // Variáveis de estado que representam os blocos e as propriedades na cadeia
+    // Variáveis de estado que representam os blocos e as propriedades na cadeia
     const nodes: Set[Node]                    // Conjunto de nós mineradores
     var blcks: Set[Block]                     // Conjunto de blocos válidos
     var chain: Node -> Set[Block]             // Cada nó aponta para um subconjunto de blocos
     var last_block_id: Node -> int            // Último bloco minerado por cada nó (0 a 3)
-    var status: Node -> str                   // Estado do nó, valores "mined" ou "miner"
+    var status: Node -> MinerStatus           // Estado do nó, valores MINED ou MINER
     var status_changer: Node -> int           // Indicador de mudança de status, valores 0 ou 1
 
+    // Função para verificar se um bloco é válido conforme as restrições definidas
     def isValidBlock(b: Block): bool = and {
         b.block_id >= 0 and b.block_id <= 3,
         b.prev_block_id >= -1 and b.prev_block_id <= 3
     }
 
-
-   // Ação para verificar todas as condições de tipo
+    // Ação para verificar todas as condições de tipo
     action POWTypeOK = all {
         // Verifica se todos os elementos de blcks seguem o tipo Block
         blcks.forall(isValidBlock),
@@ -39,8 +44,8 @@ module pow {
         // Verifica se last_block_id é um mapeamento de nodes para valores entre 0 e 3
         nodes.forall(n => last_block_id.get(n) >= 0 and last_block_id.get(n) <= 3),
 
-        // Verifica se status é um mapeamento de nodes para "mined" ou "miner"
-        nodes.forall(n => Set("mined", "miner").contains(status.get(n))),
+        // Verifica se status é um mapeamento de nodes para MINED ou MINER
+        nodes.forall(n => Set(MINED, MINER).contains(status.get(n))),
 
         // Verifica se status_changer é um mapeamento de nodes para 0 ou 1
         nodes.forall(n => Set(0, 1).contains(status_changer.get(n)))
