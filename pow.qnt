@@ -1,39 +1,53 @@
 module pow {
+    // Módulo que modela o protocolo de prova de trabalho (Proof-of-Work) em um sistema distribuído.
+    // Este código representa a lógica de mineração, propagação e validação de blocos em uma rede de nós.
+
     // Define o tipo Node como uma string (identificador de nó)
     type Node = str
 
-    // Definindo uma variante para miner_id que pode ser "First" ou um Node
+    // Definindo uma variante para miner_id que pode ser:
+    // - `First`: Representa o bloco gênese (primeiro bloco da cadeia).
+    // - `Miner(Node)`: Representa um bloco minerado por um nó específico.
     type MinerId =
-        | First       // Representa o bloco inicial, valor especial
+        | First       // Representa o bloco gênese
         | Miner(Node) // Representa o minerador por um Node
 
     // Enumeradores para o estado do minerador
+    // - `MINED`: Indica que o nó já minerou um bloco.
+    // - `MINER`: Indica que o nó está apto a minerar.
     type MinerStatus =
         | MINED
         | MINER
 
-    // Tipo Block, onde miner_id agora usa a variante MinerId
+    // Tipo `Block`, representando um bloco na cadeia.
+    // Campos:
+    // - `miner_id`: Identifica o minerador do bloco (pode ser `First` ou `Miner(Node)`).
+    // - `block_id`: Identificador único do bloco (inteiro no intervalo 0..3).
+    // - `prev_block_id`: Identificador do bloco anterior na cadeia (inteiro no intervalo -1..3).
     type Block = {
         miner_id: MinerId,       // "First" ou um Node encapsulado em Miner
         block_id: int,           // Deve estar no intervalo 0..3
         prev_block_id: int       // Deve estar no intervalo -1..3
     }
 
-    // Variáveis de estado que representam os blocos e as propriedades na cadeia
-    const nodes: Set[Node]                    // Conjunto de nós mineradores
-    var blcks: Set[Block]                     // Conjunto de blocos válidos
-    var chain: Node -> Set[Block]             // Cada nó aponta para um subconjunto de blocos
-    var last_block_id: Node -> int            // Último bloco minerado por cada nó (0 a 3)
-    var status: Node -> MinerStatus           // Estado do nó, valores MINED ou MINER
-    var status_changer: Node -> int           // Indicador de mudança de status, valores 0 ou 1
+    // Variáveis de estado que representam o estado atual da rede blockchain:
+    const nodes: Set[Node]                    // Conjunto de nós participantes na rede
+    var blcks: Set[Block]                     // Conjunto de blocos válidos existentes na rede
+    var chain: Node -> Set[Block]             // Mapeamento de cada nó para sua visão local da cadeia de blocos
+    var last_block_id: Node -> int            // Último bloco conhecido por cada nó (identificador do bloco)
+    var status: Node -> MinerStatus           // Estado atual de cada nó (MINED ou MINER)
+    var status_changer: Node -> int           // Indicador usado para controlar a mudança de status dos nós (0 ou 1)
 
-    // Função para verificar se um bloco é válido conforme as restrições definidas
+    // Função para verificar se um bloco é válido conforme as restrições definidas:
+    // - `block_id` deve estar entre 0 e 3.
+    // - `prev_block_id` deve estar entre -1 e 3.
     def isValidBlock(b: Block): bool = and {
         b.block_id >= 0 and b.block_id <= 3,
         b.prev_block_id >= -1 and b.prev_block_id <= 3
     }
 
-    // Ação para verificar todas as condições de tipo
+    // Ação que verifica a consistência dos tipos e valores das variáveis de estado.
+    // Garante que o sistema esteja em um estado válido conforme as regras definidas.
     action POWTypeOK: bool = all {
         // Verifica se todos os elementos de blcks seguem o tipo Block
         blcks.forall(isValidBlock),
@@ -51,15 +65,17 @@ module pow {
         nodes.forall(n => Set(0, 1).contains(status_changer.get(n)))
     }
 
-     action POWInitOK: bool = all {
-        // Inicializa blcks com o bloco inicial
+    // Ação que define o estado inicial do sistema.
+    // Inicializa todas as variáveis de estado com seus valores iniciais.
+    action POWInitOK: bool = all {
+        // Inicializa blcks com o bloco gênese
         blcks == Set({
             miner_id: First,
             block_id: 0,
             prev_block_id: -1
         }),
 
-        // Inicializa chain, mapeando cada nó para um conjunto contendo o bloco inicial
+        // Inicializa chain, mapeando cada nó para um conjunto contendo o bloco gênese
         chain == nodes.mapBy(n => Set({
             miner_id: First,
             block_id: 0,
@@ -76,8 +92,14 @@ module pow {
         status_changer == nodes.mapBy(n => 0)
     }
 
-
-    // Função de mineração de um bloco por um nó
+    // Ação em que um nó `n` minera um novo bloco.
+    // Passos:
+    // - Verifica se o nó está no estado `MINER`.
+    // - Atualiza a cadeia local do nó `n` com o novo bloco.
+    // - Adiciona o novo bloco ao conjunto global de blocos `blcks`.
+    // - Incrementa o identificador do último bloco para o nó `n`.
+    // - Atualiza o status do nó para `MINED`.
+    // - Sinaliza que houve uma mudança de status no nó `n`.
     action MineABlock(n: Node): bool = all {
         // Verifica se o status do nó é MINER
         status.get(n) == MINER,
@@ -106,7 +128,14 @@ module pow {
         status_changer' = status_changer.set(n, 1)
     }
 
-    // Ação para confirmar um bloco minerado por um nó
+    // Ação em que um nó `r` confirma o bloco minerado por um nó `n`.
+    // Passos:
+    // - Verifica se o nó `n` está no estado `MINED`.
+    // - Verifica se o nó `r` está sincronizado até o bloco anterior ao de `n`.
+    // - Confirma que o bloco de `n` está presente em `blcks`.
+    // - Atualiza a cadeia local do nó `r` com o novo bloco.
+    // - Atualiza o identificador do último bloco para o nó `r`.
+    // - Sinaliza que houve uma mudança de status no nó `r`.
     action CommitABlock(n: Node, r: Node): bool = all {
         // Verifica se o status de n é MINED
         status.get(n) == MINED,
@@ -139,7 +168,11 @@ module pow {
         status' = status
     }
 
-    // Ação para ignorar um bloco minerado por um nó
+    // Ação em que um nó `r` ignora o bloco minerado por um nó `n`.
+    // - Verifica se o nó `n` está no estado `MINED`.
+    // - Confirma que o bloco de `n` está presente em `blcks`.
+    // - Sinaliza que houve uma mudança de status no nó `r`.
+    // - As demais variáveis de estado permanecem inalteradas.
     action IgnoreABlock(n: Node, r: Node): bool = all {
         // Verifica se o status de n é MINED
         status.get(n) == MINED,
@@ -161,9 +194,12 @@ module pow {
         status' = status
     }
 
-    // Ação para mudar o status de um nó
+    // Ação que atualiza o status de um nó `n` após todos os nós terem processado uma mudança.
+    // - Verifica que o indicador `status_changer` está definido para 1 em todos os nós.
+    // - Atualiza o status do nó `n` para `MINER`, permitindo que ele possa minerar novamente.
+    // - Redefine o indicador `status_changer` para 0 em todos os nós para sinalizar que a mudança foi processada.
     action ChangeStatus(n: Node): bool = all {
-        // Define status_changer para 1 para todos os nós inicialmente
+        // Verifica se status_changer é 1 para todos os nós
         status_changer == nodes.mapBy(_ => 1),
 
         // Atualiza o status do nó n para MINER
@@ -178,7 +214,12 @@ module pow {
         last_block_id' = last_block_id
     }
 
-    // Ação de transição principal, que executa uma das alternativas para um nó escolhido
+    // Ação de transição principal, que executa uma das alternativas para um nó escolhido.
+    // - Escolhe um nó `n` de forma não-determinística.
+    // - Executa uma das ações:
+    //   - `MineABlock(n)`: O nó `n` minera um bloco.
+    //   - `ChangeStatus(n)`: O nó `n` muda seu status após processamento.
+    //   - Para cada nó `r`, executa `CommitABlock(n, r)` ou `IgnoreABlock(n, r)`.
     action POWNext = any {
         // Escolhe um nó `n` de forma não-determinística
         nondet n = oneOf(nodes)
@@ -205,7 +246,11 @@ module pow {
     // Definimos os vars para usar com orKeep
     val vars = (chain, blcks, last_block_id, status)
 
-    // Especificação do protocolo de prova de trabalho usando orKeep
+    // Especificação temporal que define o comportamento do protocolo de prova de trabalho.
+    // - `POWInitOK`: Condição inicial que deve ser verdadeira no estado inicial.
+    // - `always(POWNext.orKeep(vars))`: Garante que, a partir do estado inicial, a ação `POWNext` ocorra continuamente, respeitando as transições definidas, ou as variáveis em `vars` permanecem inalteradas.
+    // - `POWInitOK implies always(POWNext.orKeep(vars))`: Formaliza que se o sistema inicia em um estado válido, então as transições definidas por `POWNext` ocorrerão sempre, garantindo o comportamento correto do protocolo.
     temporal POWSpec = POWInitOK implies always(POWNext.orKeep(vars))
 
+    // Nota: O modelo atual limita os identificadores de bloco ao intervalo 0..3, o que pode ser suficiente para fins de análise, mas não representa um sistema real onde o número de blocos é ilimitado.
 }
