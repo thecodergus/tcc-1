@@ -22,7 +22,7 @@ module pow {
     }
 
     // Variáveis de estado
-    const nodes: Set[Node]                    // Conjunto de nós participantes na rede
+    val nodes = Set("node1", "node2", "node3")                    // Conjunto de nós participantes na rede
     var blcks: Set[Block]                     // Conjunto de blocos válidos existentes na rede
     var chain: Node -> Set[Block]             // Mapeamento de cada nó para sua visão local da cadeia de blocos
     var last_block_id: Node -> int            // Último bloco conhecido por cada nó (identificador do bloco)
