@@ -69,14 +69,14 @@ module pow {
     // Inicializa todas as variáveis de estado com seus valores iniciais.
     action POWInitOK: bool = all {
         // Inicializa blcks com o bloco gênese
-        blcks == Set({
+        blcks' = Set({
             miner_id: First,
             block_id: 0,
             prev_block_id: -1
         }),
 
         // Inicializa chain, mapeando cada nó para um conjunto contendo o bloco gênese
-        chain == nodes.mapBy(n => Set({
+        chain' = nodes.mapBy(n => Set({
             miner_id: First,
             block_id: 0,
             prev_block_id: -1
