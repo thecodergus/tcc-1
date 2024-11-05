@@ -36,7 +36,7 @@ module pow {
     }
 
     // Propriedade que verifica a consistência dos tipos e valores das variáveis de estado
-    def POWTypeOK = all {
+    def TypeOk = all {
         blcks.forall(isValidBlock),
         nodes.forall(n => chain.get(n).subseteq(blcks)),
         nodes.forall(n => last_block_id.get(n) >= 0),
@@ -156,11 +156,11 @@ module pow {
     // Definimos as variáveis para usar com orKeep
     val vars = (blcks, chain, last_block_id, status, status_changer)
 
-    // Especificação temporal que inclui 'POWTypeOK' como invariante
-    temporal POWSpec = always(step.orKeep(vars) and POWTypeOK)
+    // Especificação temporal que inclui 'TypeOk' como invariante
+    temporal Spec = always(step.orKeep(vars) and TypeOk)
 
-    // **Definição** de 'POWInitOK' como uma propriedade que verifica se o estado inicial é válido
-    def POWInitOK = and {
+    // **Definição** de 'InitOk' como uma propriedade que verifica se o estado inicial é válido
+    def InitOk = and {
         blcks == Set({
             miner_id: First,
             block_id: 0,
@@ -176,6 +176,6 @@ module pow {
         status_changer == nodes.mapBy(n => 0)
     }
 
-    // Propriedade temporal que verifica se 'POWInitOK' é válido sob 'POWSpec'
-    temporal POWInitProp = POWSpec implies POWInitOK
+    // Propriedade temporal que verifica se 'InitOk' é válido sob 'Spec'
+    temporal InitProp = Spec implies InitOk
 }
